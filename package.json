@@ -1,0 +1,10 @@
+{
+  "name": "feuille-consommation-500lit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
+    "build": "node scripts/with-app-env.mjs vite build",
+    "build:cloudflare": "NITRO_PRESET=cloudflare-pages-static node scripts/with-app-env.mjs vite build; node scripts/pack-cloudflare.mjs"
+  }
+}
