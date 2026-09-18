@@ -1,37 +1,30 @@
 # Feuille de consommation — 500 Lits
 
-Application hors-ligne pour la feuille de consommation journalière
-(Résidence Universitaire 500 Lits, ONOU).
+Application hors-ligne (ONOU, Résidence 500 Lits).
 
-Saisie quotidienne, calcul automatique, bilan du mois, export Excel officiel, impression A3.
-Français / العربية. Données dans `localStorage` (pas de serveur).
+**Identifiant:** `hassad`  
+**Mot de passe:** `5420`
 
-## Connexion
+## Cloudflare Pages (Git)
 
-- Identifiant : `hassad`
-- Mot de passe : `5420`
+Do **not** compile the app. Use the prebuilt `docs/` folder.
 
-## Lancer en local
+In the Cloudflare project settings:
+
+| Field | Value |
+|---|---|
+| Framework preset | None |
+| Build command | `npm run build` |
+| Build output directory | `docs` |
+| Root directory | `/` |
+| Node.js version | `20` |
+
+If a previous deploy failed, retry after this commit.
+
+## Local
+
+Open `docs/index.html` is not enough (needs a server). Serve `docs/`:
 
 ```bash
-npm install
-npm run dev
+npx serve docs
 ```
-
-Ouvrir http://localhost:8080
-
-## Mettre en ligne (Cloudflare Pages)
-
-Le dossier `docs/` est le site statique déjà compilé.
-
-1. [Cloudflare Pages](https://pages.cloudflare.com) → **Connect to Git**
-2. Choisir ce dépôt `500lit`
-3. Build command : *(vide)*
-4. Output directory : `docs`
-5. Deploy
-
-Ou **Direct Upload** : zipper le contenu de `docs/` (fichiers à la racine du zip, pas le dossier).
-
-## GitHub Pages
-
-Settings → Pages → Deploy from a branch → `main` / `/docs`.
