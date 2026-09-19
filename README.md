@@ -8,10 +8,8 @@ Français / العربية. Données dans `localStorage` (pas de serveur).
 
 ## Site en ligne
 
-**https://slakspotyf.github.io/500lit/**
+**https://slakspotyf.github.io/**
 
 Connexion : `hassad` / `5420`
 
-## GitHub Pages
-
-Le workflow `.github/workflows/pages.yml` publie le dossier `docs/`.
+Code source : ce dépôt. Site publié depuis [slakspotyf.github.io](https://github.com/slakspotyf/slakspotyf.github.io).
