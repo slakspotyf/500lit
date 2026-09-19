@@ -2,7 +2,8 @@
   "name": "feuille-consommation-500lit",
   "private": true,
   "description": "Static site. Cloudflare must not compile TypeScript.",
+  "engines": { "node": ">=18" },
   "scripts": {
-    "build": "node -e \"console.log('Using prebuilt docs/ — no compile')\""
+    "build": "node -e \"const fs=require('fs');fs.cpSync('docs','dist',{recursive:true});console.log('Copied docs/ -> dist/');\""
   }
 }

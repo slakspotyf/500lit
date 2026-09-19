@@ -5,26 +5,15 @@ Application hors-ligne (ONOU, Résidence 500 Lits).
 **Identifiant:** `hassad`  
 **Mot de passe:** `5420`
 
-## Cloudflare Pages (Git)
+## Cloudflare Pages
 
-Do **not** compile the app. Use the prebuilt `docs/` folder.
-
-In the Cloudflare project settings:
+Framework preset: **None** (do not compile).
 
 | Field | Value |
 |---|---|
-| Framework preset | None |
 | Build command | `npm run build` |
-| Build output directory | `docs` |
+| Build output directory | `docs` (or `dist` — the build copies both) |
 | Root directory | `/` |
 | Node.js version | `20` |
 
-If a previous deploy failed, retry after this commit.
-
-## Local
-
-Open `docs/index.html` is not enough (needs a server). Serve `docs/`:
-
-```bash
-npx serve docs
-```
+The site is a single static `index.html` (no `/assets/*.js` chunks).
