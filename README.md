@@ -1,19 +1,22 @@
 # Feuille de consommation — 500 Lits
 
-Application hors-ligne (ONOU, Résidence 500 Lits).
+Application hors-ligne pour la feuille de consommation journalière
+(Résidence Universitaire 500 Lits, ONOU).
 
-**Identifiant:** `hassad`  
-**Mot de passe:** `5420`
+Saisie quotidienne, calcul automatique, bilan du mois, impression A3.
+Français / العربية. Données dans `localStorage`.
+
+## Connexion
+
+- Identifiant : `hassad`
+- Mot de passe : `5420`
+
+## GitHub Pages
+
+1. Dépôt → **Settings** → **Pages**
+2. Source : **GitHub Actions**
+3. Site : https://slakspotyf.github.io/500lit/
 
 ## Cloudflare Pages
 
-Framework preset: **None** (do not compile).
-
-| Field | Value |
-|---|---|
-| Build command | `npm run build` |
-| Build output directory | `docs` (or `dist` — the build copies both) |
-| Root directory | `/` |
-| Node.js version | `20` |
-
-The site is a single static `index.html` (no `/assets/*.js` chunks).
+Connecter ce dépôt. Build vide. Output directory : `docs`.
