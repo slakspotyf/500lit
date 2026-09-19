@@ -1,2 +1,2 @@
 /* Old vanilla entry. The live app is the SPA in /assets/. */
-location.replace("/?v=pu-restore");
+location.replace("/?v=restau-save");
