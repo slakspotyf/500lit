@@ -1,21 +1,68 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Feuille de consommation</title>
-<meta name="theme-color" content="#215544"/>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/acil40/500lits@ab39ac4/assets/styles-Bj84EqK3.css"/>
-<style>body{margin:0;background:#f3efe6;font-family:system-ui,sans-serif}.boot{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem}.spin{width:2.5rem;height:2.5rem;border-radius:999px;border:2px solid #2155444d;border-top-color:#215544;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Feuille de consommation</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <style>
+    body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+      font-family:"Source Sans 3",system-ui,sans-serif;background:#f3efe6;color:#1c1915}
+    #boot{text-align:center;padding:1.5rem}
+  </style>
 </head>
 <body>
-<div class="boot"><div class="spin"></div><p id="status">Chargement...</p></div>
-<script>
-(self.$R=self.$R||{})["tsr"]=[];
-self.$_TSR={h(){this.hydrated=!0,this.c()},e(){this.streamEnded=!0,this.c()},c(){this.hydrated&&this.streamEnded&&(delete self.$_TSR,delete self.$R.tsr)},p(e){this.initialized?e():this.buffer.push(e)},buffer:[]};
-$_TSR.e();
-</script>
-<script type="module" src="https://cdn.jsdelivr.net/gh/acil40/500lits@ab39ac4/assets/index-CyhAqaYv.js"></script>
+  <div id="boot"><p id="status">Chargement…</p></div>
+  <script>
+  (async function () {
+    var INDEX = ["/assets/parts/index.00.txt","/assets/parts/index.01.txt","/assets/parts/index.02.txt","/assets/parts/index.03.txt","/assets/parts/index.04.txt","/assets/parts/index.05.txt","/assets/parts/index.06.txt","/assets/parts/index.07.txt","/assets/parts/index.08.txt"];
+    var ROUTES = ["/assets/parts/routes.00.txt","/assets/parts/routes.01.txt","/assets/parts/routes.02.txt","/assets/parts/routes.03.txt","/assets/parts/routes.04.txt","/assets/parts/routes.05.txt","/assets/parts/routes.06.txt","/assets/parts/routes.07.txt"];
+    var EXCEL = ["/assets/parts/excel.00.txt","/assets/parts/excel.01.txt","/assets/parts/excel.02.txt","/assets/parts/excel.03.txt","/assets/parts/excel.04.txt","/assets/parts/excel.05.txt","/assets/parts/excel.06.txt","/assets/parts/excel.07.txt","/assets/parts/excel.08.txt","/assets/parts/excel.09.txt","/assets/parts/excel.10.txt","/assets/parts/excel.11.txt","/assets/parts/excel.12.txt","/assets/parts/excel.13.txt","/assets/parts/excel.14.txt","/assets/parts/excel.15.txt","/assets/parts/excel.16.txt","/assets/parts/excel.17.txt","/assets/parts/excel.18.txt","/assets/parts/excel.19.txt","/assets/parts/excel.20.txt"];
+    async function concat(urls) {
+      var texts = await Promise.all(urls.map(function (u) {
+        return fetch(u).then(function (r) {
+          if (!r.ok) throw new Error(u + " → " + r.status);
+          return r.text();
+        });
+      }));
+      return texts.join("");
+    }
+    function blobUrl(code) {
+      return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+    }
+    try {
+      var css = await fetch("/assets/parts/styles.txt").then(function (r) { return r.ok ? r.text() : ""; });
+      if (css) {
+        var st = document.createElement("style");
+        st.textContent = css;
+        document.head.appendChild(st);
+      }
+      var indexCode = (await concat(INDEX)).split("./routes-CwvBpX5n.js").join("app-routes");
+      var routesCode = (await concat(ROUTES))
+        .split("./index-CyhAqaYv.js").join("app-index")
+        .split("./excel-export-CaV6-6gP.js").join("app-excel");
+      var excelCode = (await concat(EXCEL)).split("./index-CyhAqaYv.js").join("app-index");
+      var indexUrl = blobUrl(indexCode);
+      var routesUrl = blobUrl(routesCode);
+      var excelUrl = blobUrl(excelCode);
+      var map = document.createElement("script");
+      map.type = "importmap";
+      map.textContent = JSON.stringify({
+        imports: { "app-index": indexUrl, "app-routes": routesUrl, "app-excel": excelUrl }
+      });
+      document.head.appendChild(map);
+      var boot = document.getElementById("boot");
+      if (boot) boot.remove();
+      var mod = document.createElement("script");
+      mod.type = "module";
+      mod.src = indexUrl;
+      document.body.appendChild(mod);
+    } catch (e) {
+      var s = document.getElementById("status");
+      if (s) s.textContent = "Erreur de chargement: " + e.message;
+      console.error(e);
+    }
+  })();
+  </script>
 </body>
 </html>
