@@ -19,6 +19,14 @@ const T = {
     sheets: "Feuilles",
     products: "Produits",
     recap: "Bilan du mois",
+    recapLead: "Chaque produit : totaux d'entrées et de sorties du mois.",
+    recapOpen: "Ouvrir le bilan",
+    recapCardLead: "Entrées et sorties de chaque produit, mois par mois.",
+    recapDays: "Jours saisis",
+    recapMoved: "Produits concernés",
+    recapWithMovement: "Avec mouvement",
+    recapAll: "Tous",
+    recapEmpty: "Aucun produit pour ce filtre.",
     days: "Journées",
     newSheet: "Nouvelle feuille",
     lock: "Verrouiller",
@@ -50,6 +58,18 @@ const T = {
     pensionnaires: "Pensionnaires",
     agents: "Agents",
     invites: "Invités",
+    settings: "Établissement",
+    catalog: "Catalogue des produits",
+    catalogLead: "Noms, numéros et prix unitaires.",
+    add: "Ajouter",
+    org: "Organisme",
+    direction: "Direction",
+    residence: "Résidence",
+    restaurant: "Restaurant",
+    close: "Fermer",
+    productName: "Nom du produit",
+    createToday: "Créer la feuille du jour",
+    openToday: "Ouvrir aujourd'hui",
   },
   ar: {
     tag: "الديوان الوطني للخدمات الجامعية",
@@ -65,6 +85,14 @@ const T = {
     sheets: "الأوراق",
     products: "المنتجات",
     recap: "حصيلة الشهر",
+    recapLead: "كل منتج على حدة: مجموع المداخل ومجموع الاستهلاك لهذا الشهر.",
+    recapOpen: "فتح الحصيلة",
+    recapCardLead: "مداخل واستهلاك كل منتج، شهراً بشهر.",
+    recapDays: "أيام مسجّلة",
+    recapMoved: "منتجات معنية",
+    recapWithMovement: "فيها حركة",
+    recapAll: "الكل",
+    recapEmpty: "لا يوجد منتج بهذا التصفية.",
     days: "الأيام",
     newSheet: "ورقة جديدة",
     lock: "قفل",
@@ -96,6 +124,18 @@ const T = {
     pensionnaires: "المقيمون",
     agents: "العمال",
     invites: "الضيوف",
+    settings: "المؤسسة",
+    catalog: "كتالوج المنتجات",
+    catalogLead: "الأسماء والأرقام والأسعار.",
+    add: "إضافة",
+    org: "الهيئة",
+    direction: "المديرية",
+    residence: "الإقامة",
+    restaurant: "المطعم",
+    close: "إغلاق",
+    productName: "اسم المنتج",
+    createToday: "إنشاء ورقة اليوم",
+    openToday: "فتح ورقة اليوم",
   },
 };
 
@@ -111,9 +151,11 @@ let sheets = {};
 let settings = { ...SETTINGS };
 let locale = localStorage.getItem(LOCALE_KEY) === "ar" ? "ar" : "fr";
 let view = "home";
-let currentDate = todayISO();
 let tab = "recap";
+let currentDate = todayISO();
 let recapMonth = "";
+let recapQuery = "";
+let recapFilter = "movement";
 let query = "";
 let stockUnlocked = false;
 
@@ -154,7 +196,6 @@ function monthTitle(m) {
   const [y, mo] = m.split("-");
   return new Date(+y, +mo - 1, 1).toLocaleDateString(locale === "ar" ? "ar" : "fr-FR", { month: "long", year: "numeric" });
 }
-
 function loadState() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE) || "null");
@@ -165,8 +206,7 @@ function loadState() {
   } catch { /* empty */ }
 }
 function saveState() {
-  const payload = { state: { products, sheets, settings, currentDate }, version: 1 };
-  localStorage.setItem(STORAGE, JSON.stringify(payload));
+  localStorage.setItem(STORAGE, JSON.stringify({ state: { products, sheets, settings, currentDate }, version: 1 }));
 }
 function previousSheet(date) {
   const keys = Object.keys(sheets).filter((d) => d < date).sort();
@@ -193,7 +233,6 @@ function ensureSheet(date) {
   saveState();
   return sheets[date];
 }
-
 function hasSession() {
   return sessionStorage.getItem(SESSION) === "1" || localStorage.getItem(SESSION) === "1";
 }
@@ -232,6 +271,7 @@ function renderLock() {
 function renderHome() {
   const x = t();
   const dates = Object.keys(sheets).sort();
+  const todayExists = Boolean(sheets[todayISO()]);
   const months = {};
   for (const d of dates) (months[monthKey(d)] ||= []).push(sheets[d]);
   const monthList = Object.keys(months).sort().reverse();
@@ -239,16 +279,25 @@ function renderHome() {
   const recapDays = months[recapMonth] || [];
   const recapRows = products.map((p) => {
     let entries = 0, sorties = 0, valeur = 0, restes = 0;
-    recapDays.forEach((day, i) => {
+    recapDays.forEach((day) => {
       const line = compute(p, day.lines[p.id]);
       entries += line.entries; sorties += line.sorties; valeur += line.valeur; restes = line.restes;
     });
     return { p, entries, sorties, valeur, restes };
-  }).filter((r) => r.entries || r.sorties);
-  const tot = recapRows.reduce((a, r) => ({ entries: a.entries + r.entries, sorties: a.sorties + r.sorties, valeur: a.valeur + r.valeur }), { entries: 0, sorties: 0, valeur: 0 });
+  });
+  const qRecap = recapQuery.trim();
+  const visibleRecap = recapRows.filter((r) => {
+    if (r.p.placeholder && !r.entries && !r.sorties) return false;
+    if (recapFilter === "movement" && !r.entries && !r.sorties) return false;
+    if (qRecap && !r.p.name.includes(qRecap) && !String(r.p.number).includes(qRecap)) return false;
+    return true;
+  });
+  const totE = recapRows.reduce((a, r) => a + r.entries, 0);
+  const totS = recapRows.reduce((a, r) => a + r.sorties, 0);
+  const totV = recapRows.reduce((a, r) => a + r.valeur, 0);
 
-  $("app").innerHTML = `<div class="wrap">
-    <header class="top no-print">
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
       <div>
         <p class="tag">${x.tag}</p>
         <h1>${x.title}</h1>
@@ -257,38 +306,88 @@ function renderHome() {
       <div class="row">
         ${langSwitch()}
         <button class="btn" data-act="lock">${x.lock}</button>
-        <button class="btn primary" data-act="open-today">${x.newSheet}</button>
+        <button class="btn" data-act="open-catalog">${x.products}</button>
+        <button class="btn" data-act="open-settings">${x.settings}</button>
+        <button class="btn primary" data-act="open-today">${todayExists ? x.openToday : x.newSheet}</button>
       </div>
     </header>
-    <section class="cards no-print">
-      <article class="card"><span class="muted">${x.today}</span><b>${todayISO()}</b></article>
-      <article class="card"><span class="muted">${x.sheets}</span><b>${dates.length}</b></article>
-      <article class="card"><span class="muted">${x.products}</span><b>${products.length}</b></article>
-    </section>
-    <div class="tabs no-print">
-      <button class="${tab === "recap" ? "on" : ""}" data-act="tab-recap">${x.recap}</button>
-      <button class="${tab === "days" ? "on" : ""}" data-act="tab-days">${x.days}</button>
-    </div>
-    ${tab === "recap" ? `
-      <section class="card">
-        <h2>${x.recap}</h2>
-        <div class="month-btns">${monthList.map((m) => `<button class="btn ${m === recapMonth ? "primary" : ""}" data-act="month" data-m="${m}">${monthTitle(m)}</button>`).join("") || ""}</div>
-        <div class="cards">
-          <article class="card"><span class="muted">${x.entries}</span><b>${qty(tot.entries)}</b></article>
-          <article class="card"><span class="muted">${x.sorties}</span><b>${qty(tot.sorties)}</b></article>
-          <article class="card"><span class="muted">${x.valeur}</span><b>${money(tot.valeur)} DA</b></article>
+    <main class="stage">
+      <section class="nav-grid no-print">
+        <button class="nav-tile primary" data-act="open-today" type="button">
+          <span class="nav-kicker">${todayExists ? x.openToday : x.newSheet}</span>
+          <strong>${x.createToday}</strong>
+        </button>
+        <button class="nav-tile" data-act="tab-recap" type="button">
+          <span class="nav-kicker">${x.recap}</span>
+          <strong>${x.recapOpen}</strong>
+        </button>
+        <button class="nav-tile" data-act="open-catalog" type="button">
+          <span class="nav-kicker">${x.products}</span>
+          <strong>${x.catalog}</strong>
+        </button>
+        <button class="nav-tile" data-act="open-settings" type="button">
+          <span class="nav-kicker">${x.settings}</span>
+          <strong>${x.settings}</strong>
+        </button>
+      </section>
+      <section class="cards no-print">
+        <article class="card"><span class="muted">${x.today}</span><b>${todayISO()}</b></article>
+        <article class="card"><span class="muted">${x.sheets}</span><b>${dates.length}</b></article>
+        <article class="card"><span class="muted">${x.products}</span><b>${products.filter((p) => p.name.trim()).length}</b></article>
+      </section>
+      <div class="tabs no-print">
+        <button class="${tab === "recap" ? "on" : ""}" data-act="tab-recap">${x.recap}</button>
+        <button class="${tab === "days" ? "on" : ""}" data-act="tab-days">${x.days}</button>
+      </div>
+      ${tab === "recap" ? `
+      <section class="card grow">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <h2>${x.recap}</h2>
+          ${recapDays.length ? `<span class="btn primary" style="pointer-events:none;height:32px;font-size:12px">${monthTitle(recapMonth)}</span>` : ""}
         </div>
-        <div class="table-wrap"><table>
+        <div class="month-btns">${monthList.map((m) => `<button class="btn ${m === recapMonth ? "primary" : ""}" data-act="month" data-m="${m}">${monthTitle(m)} · ${months[m].length} j</button>`).join("") || ""}</div>
+        <div class="cards">
+          <article class="card"><span class="muted">${x.entries}</span><b>${qty(totE)}</b></article>
+          <article class="card"><span class="muted">${x.sorties}</span><b>${qty(totS)}</b></article>
+          <article class="card"><span class="muted">${x.valeur}</span><b>${money(totV)} DA</b></article>
+        </div>
+        ${recapDays.length === 0 ? `<div class="empty-fill"><p class="muted">${x.noDays}</p><button class="btn primary" data-act="open-today">${x.createToday}</button></div>` : `
+        <div class="row" style="margin:8px 0 12px">
+          <input class="search" id="recap-q" placeholder="${x.search}">
+          <button class="btn ${recapFilter === "movement" ? "primary" : ""}" data-act="recap-move">${x.recapWithMovement}</button>
+          <button class="btn ${recapFilter === "all" ? "primary" : ""}" data-act="recap-all">${x.recapAll}</button>
+        </div>
+        ${visibleRecap.length === 0 ? `<p class="muted" style="padding:32px;text-align:center">${x.recapEmpty}</p>` : `
+        <div class="product-grid">
+          ${visibleRecap.map((r) => `<article class="product-card">
+            <div>
+              <p class="n">N° ${r.p.number}</p>
+              <h3>${r.p.name}</h3>
+            </div>
+            <div class="split">
+              <div class="stat in"><span>${x.entries}</span><strong>${qty(r.entries)}</strong></div>
+              <div class="stat out"><span>${x.sorties}</span><strong>${qty(r.sorties)}</strong></div>
+            </div>
+            <div class="product-foot">
+              <div><small>${x.valeur}</small><b>${money(r.valeur)} DA</b></div>
+              <div style="text-align:end"><small>${x.restes}</small><b>${qty(r.restes)}</b></div>
+            </div>
+          </article>`).join("")}
+        </div>
+        <div class="table-wrap" style="margin-top:16px"><table>
           <thead><tr><th>N°</th><th>${x.products}</th><th class="num">${x.entries}</th><th class="num">${x.sorties}</th><th class="num">${x.valeur}</th><th class="num">${x.restes}</th></tr></thead>
-          <tbody>${recapRows.map((r) => `<tr><td>${r.p.number}</td><td class="name">${r.p.name}</td><td class="num">${qty(r.entries)}</td><td class="num">${qty(r.sorties)}</td><td class="num">${money(r.valeur)}</td><td class="num">${qty(r.restes)}</td></tr>`).join("") || `<tr><td colspan="6">${x.noDays}</td></tr>`}</tbody>
-        </table></div>
+          <tbody>${visibleRecap.map((r) => `<tr><td>${r.p.number}</td><td class="name">${r.p.name}</td><td class="num num-in">${qty(r.entries)}</td><td class="num num-out">${qty(r.sorties)}</td><td class="num">${money(r.valeur)}</td><td class="num">${qty(r.restes)}</td></tr>`).join("")}</tbody>
+          <tfoot><tr><th colspan="4">${x.total} — ${x.valeur}</th><th class="num">${money(totV)}</th><th></th></tr></tfoot>
+        </table></div>`}
+        `}
       </section>` : `
-      <section class="card">
-        <div class="row" style="margin-bottom:12px">
+      <section class="card grow">
+        <h2>${x.days}</h2>
+        <div class="row" style="margin:12px 0">
           <button class="btn" data-act="json-out">${x.jsonOut}</button>
           <label class="btn" style="display:grid;place-items:center">${x.jsonIn}<input type="file" accept="application/json" id="jsonin" class="hidden"></label>
         </div>
-        ${dates.length === 0 ? `<p class="muted">${x.noDays}</p>` : `<ul class="list">${[...dates].reverse().map((d) => {
+        ${dates.length === 0 ? `<div class="empty-fill"><p class="muted">${x.noDays}</p><button class="btn primary" data-act="open-today">${x.createToday}</button></div>` : `<ul class="list">${[...dates].reverse().map((d) => {
           const sh = sheets[d];
           const lines = products.map((p) => compute(p, sh.lines[p.id]));
           const val = lines.reduce((s, l) => s + l.valeur, 0);
@@ -297,7 +396,145 @@ function renderHome() {
             <button class="btn danger" data-act="del" data-d="${d}">${x.del}</button></div></li>`;
         }).join("")}</ul>`}
       </section>`}
+    </main>
   </div>`;
+  const rq = $("recap-q");
+  if (rq) rq.value = recapQuery;
+}
+
+function renderCatalog() {
+  const x = t();
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
+      <div class="row">
+        <button class="btn" data-act="home">${x.back}</button>
+        <div>
+          <p class="tag">${x.tag}</p>
+          <h1>${x.catalog}</h1>
+          <p class="muted">${x.catalogLead}</p>
+        </div>
+      </div>
+      ${langSwitch()}
+    </header>
+    <main class="stage">
+      <section class="card">
+        <div class="row" style="margin-bottom:12px">
+          <input id="new-name" placeholder="${x.productName}" style="flex:1">
+          <input id="new-pu" class="qty" type="number" min="0" step="0.01" placeholder="${x.pu}">
+          <button class="btn primary" data-act="add-product">${x.add}</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>N°</th><th>${x.products}</th><th class="num">${x.pu}</th></tr></thead>
+          <tbody>${products.map((p) => `<tr>
+            <td>${p.number}</td>
+            <td><input class="prod-name" data-id="${p.id}" value="${p.name.replaceAll('"', """)}"></td>
+            <td><input class="qty prod-pu" data-id="${p.id}" type="number" min="0" step="0.01" value="${p.unitPrice || ""}"></td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+      </section>
+    </main>
+  </div>`;
+}
+
+function renderSettings() {
+  const x = t();
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
+      <div class="row">
+        <button class="btn" data-act="home">${x.back}</button>
+        <div>
+          <p class="tag">${x.tag}</p>
+          <h1>${x.settings}</h1>
+        </div>
+      </div>
+      ${langSwitch()}
+    </header>
+    <main class="stage">
+      <section class="card" style="max-width:640px">
+        <label>${x.org}<input data-set="organization" value="${settings.organization || ""}"></label>
+        <label>${x.direction}<input data-set="direction" value="${settings.direction || ""}"></label>
+        <label>${x.residence}<input data-set="residence" value="${settings.residence || ""}"></label>
+        <label>${x.restaurant}<input data-set="restaurant" value="${settings.restaurant || ""}"></label>
+      </section>
+    </main>
+  </div>`;
+}
+
+
+function renderRecap() {
+  const x = t();
+  const dates = Object.keys(sheets).sort();
+  const months = {};
+  for (const d of dates) (months[monthKey(d)] ||= []).push(sheets[d]);
+  const monthList = Object.keys(months).sort().reverse();
+  if (!recapMonth || !months[recapMonth]) recapMonth = monthList[0] || todayISO().slice(0, 7);
+  const recapDays = months[recapMonth] || [];
+  const recapRows = products.map((p) => {
+    let entries = 0, sorties = 0, valeur = 0, restes = 0;
+    recapDays.forEach((day) => {
+      const line = compute(p, day.lines[p.id]);
+      entries += line.entries; sorties += line.sorties; valeur += line.valeur; restes = line.restes;
+    });
+    return { p, entries, sorties, valeur, restes };
+  });
+  const qRecap = recapQuery.trim();
+  const visibleRecap = recapRows.filter((r) => {
+    if (r.p.placeholder && !r.entries && !r.sorties) return false;
+    if (recapFilter === "movement" && !r.entries && !r.sorties) return false;
+    if (qRecap && !r.p.name.includes(qRecap) && !String(r.p.number).includes(qRecap)) return false;
+    return true;
+  });
+  const totV = visibleRecap.reduce((a, r) => a + r.valeur, 0);
+  $("app").innerHTML = `<div class="wrap">
+    <header class="top no-print">
+      <div class="row">
+        <button class="btn" data-act="home">${x.back}</button>
+        <div>
+          <p class="tag">${x.tag}</p>
+          <h1>${x.recap}</h1>
+          <p class="muted">${x.recapLead}</p>
+        </div>
+      </div>
+      ${langSwitch()}
+    </header>
+    <section class="card">
+      <div class="month-btns">${monthList.map((m) => `<button class="btn ${m === recapMonth ? "primary" : ""}" data-act="month" data-m="${m}">${monthTitle(m)} · ${months[m].length} j</button>`).join("") || ""}</div>
+      <div class="cards">
+        <article class="card"><span class="muted">${x.recapDays}</span><b>${recapDays.length}</b></article>
+        <article class="card"><span class="muted">${x.recapMoved}</span><b>${visibleRecap.length}</b></article>
+        <article class="card"><span class="muted">${x.valeur}</span><b>${money(totV)} DA</b></article>
+      </div>
+      <div class="row" style="margin:8px 0 12px">
+        <input class="search" id="recap-q" placeholder="${x.search}">
+        <button class="btn ${recapFilter === "movement" ? "primary" : ""}" data-act="recap-move">${x.recapWithMovement}</button>
+        <button class="btn ${recapFilter === "all" ? "primary" : ""}" data-act="recap-all">${x.recapAll}</button>
+      </div>
+      ${visibleRecap.length === 0 ? `<p class="muted" style="padding:24px;text-align:center">${x.recapEmpty}</p>` : `
+      <div class="product-grid">
+        ${visibleRecap.map((r) => `<article class="product-card">
+          <div>
+            <p class="n">N° ${r.p.number}</p>
+            <h3>${r.p.name}</h3>
+          </div>
+          <div class="split">
+            <div class="stat in"><span>${x.entries}</span><strong>${qty(r.entries)}</strong></div>
+            <div class="stat out"><span>${x.sorties}</span><strong>${qty(r.sorties)}</strong></div>
+          </div>
+          <div class="product-foot">
+            <div><small>${x.valeur}</small><b>${money(r.valeur)} DA</b></div>
+            <div style="text-align:end"><small>${x.restes}</small><b>${qty(r.restes)}</b></div>
+          </div>
+        </article>`).join("")}
+      </div>
+      <div class="table-wrap" style="margin-top:16px"><table>
+        <thead><tr><th>N°</th><th>${x.products}</th><th class="num">${x.entries}</th><th class="num">${x.sorties}</th><th class="num">${x.valeur}</th><th class="num">${x.restes}</th></tr></thead>
+        <tbody>${visibleRecap.map((r) => `<tr><td>${r.p.number}</td><td class="name">${r.p.name}</td><td class="num num-in">${qty(r.entries)}</td><td class="num num-out">${qty(r.sorties)}</td><td class="num">${money(r.valeur)}</td><td class="num">${qty(r.restes)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><th colspan="4">${x.total} — ${x.valeur}</th><th class="num">${money(totV)}</th><th></th></tr></tfoot>
+      </table></div>`}
+    </section>
+  </div>`;
+  const rq = $("recap-q");
+  if (rq) rq.value = recapQuery;
 }
 
 function renderEditor() {
@@ -318,6 +555,7 @@ function renderEditor() {
       <div class="row">
         ${langSwitch()}
         <input type="date" id="date" value="${currentDate}">
+        <button class="btn" data-act="open-recap">${x.recap}</button>
         <button class="btn" data-act="print">${x.print}</button>
         <button class="btn" data-act="lock">${x.lock}</button>
       </div>
@@ -374,6 +612,9 @@ function renderEditor() {
 function render() {
   if (!hasSession()) return renderLock();
   if (view === "editor") return renderEditor();
+  if (view === "recap") return renderRecap();
+  if (view === "catalog") return renderCatalog();
+  if (view === "settings") return renderSettings();
   renderHome();
 }
 
@@ -384,9 +625,22 @@ function onClick(e) {
   if (act === "lang-fr") setLocale("fr");
   if (act === "lang-ar") setLocale("ar");
   if (act === "lock") { sessionStorage.removeItem(SESSION); localStorage.removeItem(SESSION); view = "home"; render(); }
-  if (act === "tab-recap") { tab = "recap"; render(); }
-  if (act === "tab-days") { tab = "days"; render(); }
+  if (act === "open-recap") { tab = "recap"; view = "home"; render(); }
+  if (act === "tab-recap") { tab = "recap"; view = "home"; render(); }
+  if (act === "tab-days") { tab = "days"; view = "home"; render(); }
+  if (act === "open-catalog") { view = "catalog"; render(); }
+  if (act === "open-settings") { view = "settings"; render(); }
+  if (act === "add-product") {
+    const name = ($("new-name")?.value || "").trim();
+    if (!name) return;
+    const pu = +($("new-pu")?.value || 0);
+    const number = products.reduce((m, p) => Math.max(m, p.number || 0), 0) + 1;
+    products.push({ id: "p" + Date.now(), number, name, unitPrice: pu, placeholder: false });
+    saveState(); renderCatalog();
+  }
   if (act === "month") { recapMonth = b.dataset.m; render(); }
+  if (act === "recap-move") { recapFilter = "movement"; render(); }
+  if (act === "recap-all") { recapFilter = "all"; render(); }
   if (act === "open-today") { currentDate = todayISO(); ensureSheet(currentDate); view = "editor"; render(); }
   if (act === "open") { currentDate = b.dataset.d; view = "editor"; render(); }
   if (act === "home") { view = "home"; render(); }
@@ -412,8 +666,7 @@ function bind() {
   });
   document.addEventListener("change", (e) => {
     if (e.target.id === "jsonin" && e.target.files[0]) {
-      const f = e.target.files[0];
-      f.text().then((txt) => {
+      e.target.files[0].text().then((txt) => {
         const data = JSON.parse(txt);
         const s = data.state || data;
         if (s.products) products = s.products;
@@ -449,27 +702,47 @@ function bind() {
       sheets[currentDate].menu[e.target.dataset.menu] = e.target.value;
       saveState();
     }
+    if (e.target.dataset.set) {
+      settings[e.target.dataset.set] = e.target.value;
+      saveState();
+    }
+    const pname = e.target.closest(".prod-name");
+    if (pname) {
+      const p = products.find((x) => x.id === pname.dataset.id);
+      if (p) { p.name = pname.value; saveState(); }
+    }
+    const ppu = e.target.closest(".prod-pu");
+    if (ppu) {
+      const p = products.find((x) => x.id === ppu.dataset.id);
+      if (p) { p.unitPrice = +ppu.value || 0; saveState(); }
+    }
   });
   document.addEventListener("input", (e) => {
-    if (e.target.id === "q") { query = e.target.value; }
+    if (e.target.id === "q") query = e.target.value;
+    if (e.target.id === "recap-q") recapQuery = e.target.value;
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && e.target.id === "q") { e.preventDefault(); renderEditor(); }
+    if (e.key === "Enter" && e.target.id === "recap-q") { e.preventDefault(); renderRecap(); }
   });
 }
 
-const DEFAULT_PRODUCTS = [{"id":"p01","number":1,"name":"خبز محسن 250 غ","unitPrice":8,"placeholder":false},{"id":"p02","number":2,"name":"هلالـــيات","unitPrice":30,"placeholder":false},{"id":"p03","number":3,"name":"حليب بودرة جاف","unitPrice":1100,"placeholder":false},{"id":"p04","number":4,"name":"ســـــــكــر","unitPrice":90,"placeholder":false},{"id":"p05","number":5,"name":"قهـــــــــوة","unitPrice":1000,"placeholder":false},{"id":"p06","number":6,"name":"مربى","unitPrice":273.7,"placeholder":false},{"id":"p07","number":7,"name":"ميلفاي","unitPrice":40,"placeholder":false},{"id":"p08","number":8,"name":"كروكـــــــــــــي","unitPrice":30,"placeholder":false},{"id":"p09","number":9,"name":"خبز بالشكولاطة","unitPrice":30,"placeholder":false},{"id":"p10","number":10,"name":"مــــــادلان","unitPrice":60,"placeholder":false},{"id":"p11","number":11,"name":"لحـــم العـــــجل","unitPrice":1559,"placeholder":false},{"id":"p12","number":12,"name":"لحم الخروف","unitPrice":2295,"placeholder":false},{"id":"p13","number":14,"name":"دجــــــاج طازج","unitPrice":450,"placeholder":false},{"id":"p14","number":13,"name":"Lait en boit 1 L","unitPrice":120,"placeholder":false},{"id":"p15","number":14,"name":"fromage ميزان","unitPrice":571.2,"placeholder":false},{"id":"p16","number":15,"name":"سمك سردين","unitPrice":1356.6,"placeholder":false},{"id":"p17","number":16,"name":"زلابية","unitPrice":430,"placeholder":false},{"id":"p18","number":17,"name":"قلب اللوز","unitPrice":45,"placeholder":false},{"id":"p19","number":18,"name":"بطاطا مسحوقة","unitPrice":1142.4,"placeholder":false},{"id":"p20","number":19,"name":"فطر معلب","unitPrice":1142.4,"placeholder":false},{"id":"p21","number":20,"name":"بيـــــــــض","unitPrice":16,"placeholder":false},{"id":"p22","number":21,"name":"جبـــــــــن 1/16","unitPrice":218.96,"placeholder":false},{"id":"p23","number":22,"name":"ورق المنيوم","unitPrice":2975,"placeholder":false},{"id":"p24","number":23,"name":"لبن 1 ليتر","unitPrice":74.38,"placeholder":false},{"id":"p25","number":24,"name":"جبن صلب لتبشير","unitPrice":1190,"placeholder":false},{"id":"p26","number":25,"name":"زيــــــــــــــــت","unitPrice":600,"placeholder":false},{"id":"p27","number":26,"name":"خـــــــــــــــل","unitPrice":119,"placeholder":false},{"id":"p28","number":27,"name":"ملح المائدة","unitPrice":47.6,"placeholder":false},{"id":"p29","number":28,"name":"طماطم 4/4","unitPrice":357,"placeholder":false},{"id":"p30","number":29,"name":"عين بقرة","unitPrice":1904,"placeholder":false},{"id":"p31","number":30,"name":"زبيب جاف","unitPrice":1190,"placeholder":false},{"id":"p32","number":31,"name":"توابل","unitPrice":1428,"placeholder":false},{"id":"p33","number":32,"name":"مارغــــــرين","unitPrice":238,"placeholder":false},{"id":"p34","number":33,"name":"رايب","unitPrice":74.38,"placeholder":false},{"id":"p35","number":34,"name":"جلبانة مجمدة","unitPrice":714,"placeholder":false},{"id":"p36","number":35,"name":"أرز","unitPrice":152.6,"placeholder":false},{"id":"p37","number":36,"name":"عدس","unitPrice":272.5,"placeholder":false},{"id":"p38","number":37,"name":"فاصـــــ,لياء","unitPrice":348.8,"placeholder":false},{"id":"p39","number":38,"name":"حمــــــص","unitPrice":403.3,"placeholder":false},{"id":"p40","number":39,"name":"عجائن غذائية","unitPrice":130.8,"placeholder":false},{"id":"p41","number":40,"name":"ماء","unitPrice":17.85,"placeholder":false},{"id":"p42","number":41,"name":"تشيشة فريك","unitPrice":392.4,"placeholder":false},{"id":"p43","number":42,"name":"كــــسكــــس","unitPrice":130.8,"placeholder":false},{"id":"p44","number":43,"name":"شخشوخة","unitPrice":207.1,"placeholder":false},{"id":"p45","number":44,"name":"مشمش جاف","unitPrice":1737.4,"placeholder":false},{"id":"p46","number":45,"name":"ماييس علبة 1 كلغ","unitPrice":618.8,"placeholder":false},{"id":"p47","number":46,"name":"سردين علبة 120 غ","unitPrice":190.4,"placeholder":false},{"id":"p48","number":47,"name":"بودرة الشوكولاطة","unitPrice":654.5,"placeholder":false},{"id":"p49","number":48,"name":"مكعب المرق","unitPrice":17.85,"placeholder":false},{"id":"p50","number":49,"name":"تـــــــــــــــــــــونة","unitPrice":119,"placeholder":false},{"id":"p51","number":50,"name":"بصـــــل","unitPrice":65,"placeholder":false},{"id":"p52","number":51,"name":"لفت منزوع الاوراق","unitPrice":95,"placeholder":false},{"id":"p53","number":52,"name":"ثـــــوم","unitPrice":450,"placeholder":false},{"id":"p54","number":53,"name":"بطــــاطــــــــا","unitPrice":75,"placeholder":false},{"id":"p55","number":54,"name":"سلاطــــــــــة","unitPrice":125,"placeholder":false},{"id":"p56","number":55,"name":"خيـــــــار","unitPrice":120,"placeholder":false},{"id":"p57","number":56,"name":"شمندر منزوع الاوراق","unitPrice":95,"placeholder":false},{"id":"p58","number":57,"name":"بســـــباس","unitPrice":90,"placeholder":false},{"id":"p59","number":58,"name":"قرنبيط","unitPrice":110,"placeholder":false},{"id":"p60","number":59,"name":"طمـــــــــــــاطم حب","unitPrice":110,"placeholder":false},{"id":"p61","number":60,"name":"فلفل  حلو و حار","unitPrice":125,"placeholder":false},{"id":"p62","number":61,"name":"زيتون المائدة","unitPrice":487.9,"placeholder":false},{"id":"p63","number":62,"name":"زيتون  بدون نــــوى","unitPrice":559.3,"placeholder":false},{"id":"p64","number":63,"name":"اعشاب عطرية","unitPrice":400,"placeholder":false},{"id":"p65","number":64,"name":"جــــــــــزر","unitPrice":93,"placeholder":false},{"id":"p66","number":65,"name":"كرم","unitPrice":100,"placeholder":false},{"id":"p67","number":66,"name":"فاصولياء خضراء","unitPrice":240,"placeholder":false},{"id":"p68","number":67,"name":"بيذنجان","unitPrice":100,"placeholder":false},{"id":"p69","number":68,"name":"خرشف","unitPrice":120,"placeholder":false},{"id":"p70","number":69,"name":"جريوات","unitPrice":130,"placeholder":false},{"id":"p71","number":70,"name":"ليمون","unitPrice":150,"placeholder":false},{"id":"p72","number":71,"name":"برتقـــــــــــال","unitPrice":230,"placeholder":false},{"id":"p73","number":72,"name":"مندريــــــن","unitPrice":230,"placeholder":false},{"id":"p74","number":73,"name":"مشمش","unitPrice":260,"placeholder":false},{"id":"p75","number":74,"name":"تفــــــــــــــاح","unitPrice":430,"placeholder":false},{"id":"p76","number":75,"name":"موز","unitPrice":476,"placeholder":false},{"id":"p77","number":76,"name":"تمـــــــر","unitPrice":450,"placeholder":false},{"id":"p78","number":77,"name":"/","unitPrice":0,"placeholder":true},{"id":"p79","number":78,"name":"خوخ","unitPrice":250,"placeholder":false},{"id":"p80","number":79,"name":"ياؤورت معطر","unitPrice":23.8,"placeholder":false},{"id":"p81","number":80,"name":"كرام ديسار","unitPrice":22.43,"placeholder":false},{"id":"p82","number":81,"name":"/","unitPrice":0,"placeholder":true},{"id":"p83","number":82,"name":"عصيـــــــــر","unitPrice":26.18,"placeholder":false},{"id":"p84","number":83,"name":"ياؤورت فرويتي","unitPrice":29.75,"placeholder":false},{"id":"p85","number":84,"name":"زعرور","unitPrice":280,"placeholder":false},{"id":"p86","number":85,"name":"اجاص","unitPrice":450,"placeholder":false},{"id":"p87","number":86,"name":"ورق ديول","unitPrice":130.9,"placeholder":false},{"id":"p88","number":87,"name":"عنب","unitPrice":200,"placeholder":false},{"id":"p89","number":88,"name":"برقوق","unitPrice":300,"placeholder":false},{"id":"p90","number":89,"name":"فرولة","unitPrice":300,"placeholder":false}];
+const DEFAULT_PRODUCTS = [];
+
 async function boot() {
   document.documentElement.lang = locale === "ar" ? "ar" : "fr";
   document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
-  products = DEFAULT_PRODUCTS.slice();
   try {
     const res = await fetch("./catalog.json");
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length) products = data;
     }
-  } catch (e) { /* bundled catalog */ }
+  } catch (e) { /* catalog.json required */ }
+  if (!products.length) {
+    document.getElementById("app").textContent = "Catalogue introuvable (catalog.json).";
+    return;
+  }
   loadState();
   bind();
   render();

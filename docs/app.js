@@ -35,7 +35,7 @@ const T = {
     back: "Retour",
     save: "Enregistré",
     entries: "Entrées",
-    sorties: "Sorties",
+    sorties: "Consommation",
     valeur: "Valeur",
     restes: "Restes",
     stock: "Stock veille",
@@ -58,6 +58,18 @@ const T = {
     pensionnaires: "Pensionnaires",
     agents: "Agents",
     invites: "Invités",
+    settings: "Établissement",
+    catalog: "Catalogue des produits",
+    catalogLead: "Noms, numéros et prix unitaires.",
+    add: "Ajouter",
+    org: "Organisme",
+    direction: "Direction",
+    residence: "Résidence",
+    restaurant: "Restaurant",
+    close: "Fermer",
+    productName: "Nom du produit",
+    createToday: "Créer la feuille du jour",
+    openToday: "Ouvrir aujourd'hui",
   },
   ar: {
     tag: "الديوان الوطني للخدمات الجامعية",
@@ -112,6 +124,18 @@ const T = {
     pensionnaires: "المقيمون",
     agents: "العمال",
     invites: "الضيوف",
+    settings: "المؤسسة",
+    catalog: "كتالوج المنتجات",
+    catalogLead: "الأسماء والأرقام والأسعار.",
+    add: "إضافة",
+    org: "الهيئة",
+    direction: "المديرية",
+    residence: "الإقامة",
+    restaurant: "المطعم",
+    close: "إغلاق",
+    productName: "اسم المنتج",
+    createToday: "إنشاء ورقة اليوم",
+    openToday: "فتح ورقة اليوم",
   },
 };
 
@@ -127,6 +151,7 @@ let sheets = {};
 let settings = { ...SETTINGS };
 let locale = localStorage.getItem(LOCALE_KEY) === "ar" ? "ar" : "fr";
 let view = "home";
+let tab = "recap";
 let currentDate = todayISO();
 let recapMonth = "";
 let recapQuery = "";
@@ -246,8 +271,33 @@ function renderLock() {
 function renderHome() {
   const x = t();
   const dates = Object.keys(sheets).sort();
-  $("app").innerHTML = `<div class="wrap">
-    <header class="top no-print">
+  const todayExists = Boolean(sheets[todayISO()]);
+  const months = {};
+  for (const d of dates) (months[monthKey(d)] ||= []).push(sheets[d]);
+  const monthList = Object.keys(months).sort().reverse();
+  if (!recapMonth || !months[recapMonth]) recapMonth = monthList[0] || todayISO().slice(0, 7);
+  const recapDays = months[recapMonth] || [];
+  const recapRows = products.map((p) => {
+    let entries = 0, sorties = 0, valeur = 0, restes = 0;
+    recapDays.forEach((day) => {
+      const line = compute(p, day.lines[p.id]);
+      entries += line.entries; sorties += line.sorties; valeur += line.valeur; restes = line.restes;
+    });
+    return { p, entries, sorties, valeur, restes };
+  });
+  const qRecap = recapQuery.trim();
+  const visibleRecap = recapRows.filter((r) => {
+    if (r.p.placeholder && !r.entries && !r.sorties) return false;
+    if (recapFilter === "movement" && !r.entries && !r.sorties) return false;
+    if (qRecap && !r.p.name.includes(qRecap) && !String(r.p.number).includes(qRecap)) return false;
+    return true;
+  });
+  const totE = recapRows.reduce((a, r) => a + r.entries, 0);
+  const totS = recapRows.reduce((a, r) => a + r.sorties, 0);
+  const totV = recapRows.reduce((a, r) => a + r.valeur, 0);
+
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
       <div>
         <p class="tag">${x.tag}</p>
         <h1>${x.title}</h1>
@@ -256,38 +306,160 @@ function renderHome() {
       <div class="row">
         ${langSwitch()}
         <button class="btn" data-act="lock">${x.lock}</button>
-        <button class="btn primary" data-act="open-today">${x.newSheet}</button>
+        <button class="btn" data-act="open-catalog">${x.products}</button>
+        <button class="btn" data-act="open-settings">${x.settings}</button>
+        <button class="btn primary" data-act="open-today">${todayExists ? x.openToday : x.newSheet}</button>
       </div>
     </header>
-    <section class="cards no-print">
-      <article class="card"><span class="muted">${x.today}</span><b>${todayISO()}</b></article>
-      <article class="card"><span class="muted">${x.sheets}</span><b>${dates.length}</b></article>
-      <article class="card"><span class="muted">${x.products}</span><b>${products.length}</b></article>
-    </section>
-    <button class="product-card recap-entry no-print" data-act="open-recap" type="button" style="width:100%;text-align:inherit;cursor:pointer">
-      <div>
-        <p class="n">${x.recap}</p>
-        <h3>${x.recapOpen}</h3>
-        <p class="muted">${x.recapCardLead}</p>
+    <main class="stage">
+      <section class="nav-grid no-print">
+        <button class="nav-tile primary" data-act="open-today" type="button">
+          <span class="nav-kicker">${todayExists ? x.openToday : x.newSheet}</span>
+          <strong>${x.createToday}</strong>
+        </button>
+        <button class="nav-tile" data-act="tab-recap" type="button">
+          <span class="nav-kicker">${x.recap}</span>
+          <strong>${x.recapOpen}</strong>
+        </button>
+        <button class="nav-tile" data-act="open-catalog" type="button">
+          <span class="nav-kicker">${x.products}</span>
+          <strong>${x.catalog}</strong>
+        </button>
+        <button class="nav-tile" data-act="open-settings" type="button">
+          <span class="nav-kicker">${x.settings}</span>
+          <strong>${x.settings}</strong>
+        </button>
+      </section>
+      <section class="cards no-print">
+        <article class="card"><span class="muted">${x.today}</span><b>${todayISO()}</b></article>
+        <article class="card"><span class="muted">${x.sheets}</span><b>${dates.length}</b></article>
+        <article class="card"><span class="muted">${x.products}</span><b>${products.filter((p) => p.name.trim()).length}</b></article>
+      </section>
+      <div class="tabs no-print">
+        <button class="${tab === "recap" ? "on" : ""}" data-act="tab-recap">${x.recap}</button>
+        <button class="${tab === "days" ? "on" : ""}" data-act="tab-days">${x.days}</button>
       </div>
-    </button>
-    <section class="card">
-      <h2>${x.days}</h2>
-      <div class="row" style="margin:12px 0">
-        <button class="btn" data-act="json-out">${x.jsonOut}</button>
-        <label class="btn" style="display:grid;place-items:center">${x.jsonIn}<input type="file" accept="application/json" id="jsonin" class="hidden"></label>
+      ${tab === "recap" ? `
+      <section class="card grow">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <h2>${x.recap}</h2>
+          ${recapDays.length ? `<span class="btn primary" style="pointer-events:none;height:32px;font-size:12px">${monthTitle(recapMonth)}</span>` : ""}
+        </div>
+        <div class="month-btns">${monthList.map((m) => `<button class="btn ${m === recapMonth ? "primary" : ""}" data-act="month" data-m="${m}">${monthTitle(m)} · ${months[m].length} j</button>`).join("") || ""}</div>
+        <div class="cards">
+          <article class="card"><span class="muted">${x.entries}</span><b>${qty(totE)}</b></article>
+          <article class="card"><span class="muted">${x.sorties}</span><b>${qty(totS)}</b></article>
+          <article class="card"><span class="muted">${x.valeur}</span><b>${money(totV)} DA</b></article>
+        </div>
+        ${recapDays.length === 0 ? `<div class="empty-fill"><p class="muted">${x.noDays}</p><button class="btn primary" data-act="open-today">${x.createToday}</button></div>` : `
+        <div class="row" style="margin:8px 0 12px">
+          <input class="search" id="recap-q" placeholder="${x.search}">
+          <button class="btn ${recapFilter === "movement" ? "primary" : ""}" data-act="recap-move">${x.recapWithMovement}</button>
+          <button class="btn ${recapFilter === "all" ? "primary" : ""}" data-act="recap-all">${x.recapAll}</button>
+        </div>
+        ${visibleRecap.length === 0 ? `<p class="muted" style="padding:32px;text-align:center">${x.recapEmpty}</p>` : `
+        <div class="product-grid">
+          ${visibleRecap.map((r) => `<article class="product-card">
+            <div>
+              <p class="n">N° ${r.p.number}</p>
+              <h3>${r.p.name}</h3>
+            </div>
+            <div class="split">
+              <div class="stat in"><span>${x.entries}</span><strong>${qty(r.entries)}</strong></div>
+              <div class="stat out"><span>${x.sorties}</span><strong>${qty(r.sorties)}</strong></div>
+            </div>
+            <div class="product-foot">
+              <div><small>${x.valeur}</small><b>${money(r.valeur)} DA</b></div>
+              <div style="text-align:end"><small>${x.restes}</small><b>${qty(r.restes)}</b></div>
+            </div>
+          </article>`).join("")}
+        </div>
+        <div class="table-wrap" style="margin-top:16px"><table>
+          <thead><tr><th>N°</th><th>${x.products}</th><th class="num">${x.entries}</th><th class="num">${x.sorties}</th><th class="num">${x.valeur}</th><th class="num">${x.restes}</th></tr></thead>
+          <tbody>${visibleRecap.map((r) => `<tr><td>${r.p.number}</td><td class="name">${r.p.name}</td><td class="num num-in">${qty(r.entries)}</td><td class="num num-out">${qty(r.sorties)}</td><td class="num">${money(r.valeur)}</td><td class="num">${qty(r.restes)}</td></tr>`).join("")}</tbody>
+          <tfoot><tr><th colspan="4">${x.total} — ${x.valeur}</th><th class="num">${money(totV)}</th><th></th></tr></tfoot>
+        </table></div>`}
+        `}
+      </section>` : `
+      <section class="card grow">
+        <h2>${x.days}</h2>
+        <div class="row" style="margin:12px 0">
+          <button class="btn" data-act="json-out">${x.jsonOut}</button>
+          <label class="btn" style="display:grid;place-items:center">${x.jsonIn}<input type="file" accept="application/json" id="jsonin" class="hidden"></label>
+        </div>
+        ${dates.length === 0 ? `<div class="empty-fill"><p class="muted">${x.noDays}</p><button class="btn primary" data-act="open-today">${x.createToday}</button></div>` : `<ul class="list">${[...dates].reverse().map((d) => {
+          const sh = sheets[d];
+          const lines = products.map((p) => compute(p, sh.lines[p.id]));
+          const val = lines.reduce((s, l) => s + l.valeur, 0);
+          return `<li><div><b>${d}</b><div class="muted">${money(val)} DA · ${sh.restaurant || ""}</div></div>
+            <div class="row"><button class="btn primary" data-act="open" data-d="${d}">${x.open}</button>
+            <button class="btn danger" data-act="del" data-d="${d}">${x.del}</button></div></li>`;
+        }).join("")}</ul>`}
+      </section>`}
+    </main>
+  </div>`;
+  const rq = $("recap-q");
+  if (rq) rq.value = recapQuery;
+}
+
+function renderCatalog() {
+  const x = t();
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
+      <div class="row">
+        <button class="btn" data-act="home">${x.back}</button>
+        <div>
+          <p class="tag">${x.tag}</p>
+          <h1>${x.catalog}</h1>
+          <p class="muted">${x.catalogLead}</p>
+        </div>
       </div>
-      ${dates.length === 0 ? `<p class="muted">${x.noDays}</p>` : `<ul class="list">${[...dates].reverse().map((d) => {
-        const sh = sheets[d];
-        const lines = products.map((p) => compute(p, sh.lines[p.id]));
-        const val = lines.reduce((s, l) => s + l.valeur, 0);
-        return `<li><div><b>${d}</b><div class="muted">${money(val)} DA · ${sh.restaurant || ""}</div></div>
-          <div class="row"><button class="btn primary" data-act="open" data-d="${d}">${x.open}</button>
-          <button class="btn danger" data-act="del" data-d="${d}">${x.del}</button></div></li>`;
-      }).join("")}</ul>`}
-    </section>
+      ${langSwitch()}
+    </header>
+    <main class="stage">
+      <section class="card">
+        <div class="row" style="margin-bottom:12px">
+          <input id="new-name" placeholder="${x.productName}" style="flex:1">
+          <input id="new-pu" class="qty" type="number" min="0" step="0.01" placeholder="${x.pu}">
+          <button class="btn primary" data-act="add-product">${x.add}</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>N°</th><th>${x.products}</th><th class="num">${x.pu}</th></tr></thead>
+          <tbody>${products.map((p) => `<tr>
+            <td>${p.number}</td>
+            <td><input class="prod-name" data-id="${p.id}" value="${p.name.replaceAll('"', """)}"></td>
+            <td><input class="qty prod-pu" data-id="${p.id}" type="number" min="0" step="0.01" value="${p.unitPrice || ""}"></td>
+          </tr>`).join("")}</tbody>
+        </table></div>
+      </section>
+    </main>
   </div>`;
 }
+
+function renderSettings() {
+  const x = t();
+  $("app").innerHTML = `<div class="shell">
+    <header class="mast no-print">
+      <div class="row">
+        <button class="btn" data-act="home">${x.back}</button>
+        <div>
+          <p class="tag">${x.tag}</p>
+          <h1>${x.settings}</h1>
+        </div>
+      </div>
+      ${langSwitch()}
+    </header>
+    <main class="stage">
+      <section class="card" style="max-width:640px">
+        <label>${x.org}<input data-set="organization" value="${settings.organization || ""}"></label>
+        <label>${x.direction}<input data-set="direction" value="${settings.direction || ""}"></label>
+        <label>${x.residence}<input data-set="residence" value="${settings.residence || ""}"></label>
+        <label>${x.restaurant}<input data-set="restaurant" value="${settings.restaurant || ""}"></label>
+      </section>
+    </main>
+  </div>`;
+}
+
 
 function renderRecap() {
   const x = t();
@@ -441,6 +613,8 @@ function render() {
   if (!hasSession()) return renderLock();
   if (view === "editor") return renderEditor();
   if (view === "recap") return renderRecap();
+  if (view === "catalog") return renderCatalog();
+  if (view === "settings") return renderSettings();
   renderHome();
 }
 
@@ -451,7 +625,19 @@ function onClick(e) {
   if (act === "lang-fr") setLocale("fr");
   if (act === "lang-ar") setLocale("ar");
   if (act === "lock") { sessionStorage.removeItem(SESSION); localStorage.removeItem(SESSION); view = "home"; render(); }
-  if (act === "open-recap") { view = "recap"; render(); }
+  if (act === "open-recap") { tab = "recap"; view = "home"; render(); }
+  if (act === "tab-recap") { tab = "recap"; view = "home"; render(); }
+  if (act === "tab-days") { tab = "days"; view = "home"; render(); }
+  if (act === "open-catalog") { view = "catalog"; render(); }
+  if (act === "open-settings") { view = "settings"; render(); }
+  if (act === "add-product") {
+    const name = ($("new-name")?.value || "").trim();
+    if (!name) return;
+    const pu = +($("new-pu")?.value || 0);
+    const number = products.reduce((m, p) => Math.max(m, p.number || 0), 0) + 1;
+    products.push({ id: "p" + Date.now(), number, name, unitPrice: pu, placeholder: false });
+    saveState(); renderCatalog();
+  }
   if (act === "month") { recapMonth = b.dataset.m; render(); }
   if (act === "recap-move") { recapFilter = "movement"; render(); }
   if (act === "recap-all") { recapFilter = "all"; render(); }
@@ -515,6 +701,20 @@ function bind() {
     if (e.target.dataset.menu) {
       sheets[currentDate].menu[e.target.dataset.menu] = e.target.value;
       saveState();
+    }
+    if (e.target.dataset.set) {
+      settings[e.target.dataset.set] = e.target.value;
+      saveState();
+    }
+    const pname = e.target.closest(".prod-name");
+    if (pname) {
+      const p = products.find((x) => x.id === pname.dataset.id);
+      if (p) { p.name = pname.value; saveState(); }
+    }
+    const ppu = e.target.closest(".prod-pu");
+    if (ppu) {
+      const p = products.find((x) => x.id === ppu.dataset.id);
+      if (p) { p.unitPrice = +ppu.value || 0; saveState(); }
     }
   });
   document.addEventListener("input", (e) => {
