@@ -1,0 +1,2 @@
+Redeploy 2026-09-19T13:35:00Z — vanilla SPA, no /assets/parts.
+If 500lit.pages.dev still shows parts/index.00.txt, it is an old deployment: Direct Upload this docs/ folder (index.html + catalog.json).
