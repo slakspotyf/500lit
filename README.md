@@ -1,15 +1,5 @@
 # Feuille de consommation — 500 Lits
 
-Application hors-ligne pour la feuille de consommation journalière
-(Résidence Universitaire 500 Lits, ONOU).
+Same app as https://500lits.grok.me : daily sheets, June sample data, Excel, print A3.
 
-Saisie quotidienne, calcul automatique, bilan du mois, impression A3.
-Français / العربية. Données dans `localStorage` (pas de serveur).
-
-## Site en ligne
-
-**https://slakspotyf.github.io/**
-
-Connexion : `hassad` / `5420`
-
-Code source : ce dépôt. Site publié depuis [slakspotyf.github.io](https://github.com/slakspotyf/slakspotyf.github.io).
+Cloudflare Pages: output directory `docs`, build command empty.

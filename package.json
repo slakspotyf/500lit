@@ -1,9 +1,6 @@
 {
   "name": "feuille-consommation-500lit",
   "private": true,
-  "description": "Static site. Cloudflare must not compile TypeScript.",
-  "engines": { "node": ">=18" },
-  "scripts": {
-    "build": "node -e \"const fs=require('fs');fs.cpSync('docs','dist',{recursive:true});console.log('Copied docs/ -> dist/');\""
-  }
+  "description": "Static Cloudflare Pages site. Build command must stay empty.",
+  "engines": { "node": ">=18" }
 }
