@@ -4,65 +4,15 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Feuille de consommation</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
-  <style>
-    body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;
-      font-family:"Source Sans 3",system-ui,sans-serif;background:#f3efe6;color:#1c1915}
-    #boot{text-align:center;padding:1.5rem}
-  </style>
+  <meta name="theme-color" content="#215544"/>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Noto+Naskh+Arabic:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap"/>
+  <link rel="stylesheet" href="./app.css"/>
 </head>
 <body>
-  <div id="boot"><p id="status">Chargement…</p></div>
-  <script>
-  (async function () {
-    var INDEX = ["/assets/parts/index.00.txt","/assets/parts/index.01.txt","/assets/parts/index.02.txt","/assets/parts/index.03.txt","/assets/parts/index.04.txt","/assets/parts/index.05.txt","/assets/parts/index.06.txt","/assets/parts/index.07.txt","/assets/parts/index.08.txt"];
-    var ROUTES = ["/assets/parts/routes.00.txt","/assets/parts/routes.01.txt","/assets/parts/routes.02.txt","/assets/parts/routes.03.txt","/assets/parts/routes.04.txt","/assets/parts/routes.05.txt","/assets/parts/routes.06.txt","/assets/parts/routes.07.txt"];
-    var EXCEL = ["/assets/parts/excel.00.txt","/assets/parts/excel.01.txt","/assets/parts/excel.02.txt","/assets/parts/excel.03.txt","/assets/parts/excel.04.txt","/assets/parts/excel.05.txt","/assets/parts/excel.06.txt","/assets/parts/excel.07.txt","/assets/parts/excel.08.txt","/assets/parts/excel.09.txt","/assets/parts/excel.10.txt","/assets/parts/excel.11.txt","/assets/parts/excel.12.txt","/assets/parts/excel.13.txt","/assets/parts/excel.14.txt","/assets/parts/excel.15.txt","/assets/parts/excel.16.txt","/assets/parts/excel.17.txt","/assets/parts/excel.18.txt","/assets/parts/excel.19.txt","/assets/parts/excel.20.txt"];
-    async function concat(urls) {
-      var texts = await Promise.all(urls.map(function (u) {
-        return fetch(u).then(function (r) {
-          if (!r.ok) throw new Error(u + " → " + r.status);
-          return r.text();
-        });
-      }));
-      return texts.join("");
-    }
-    function blobUrl(code) {
-      return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
-    }
-    try {
-      var css = await fetch("/assets/parts/styles.txt").then(function (r) { return r.ok ? r.text() : ""; });
-      if (css) {
-        var st = document.createElement("style");
-        st.textContent = css;
-        document.head.appendChild(st);
-      }
-      var indexCode = (await concat(INDEX)).split("./routes-CwvBpX5n.js").join("app-routes");
-      var routesCode = (await concat(ROUTES))
-        .split("./index-CyhAqaYv.js").join("app-index")
-        .split("./excel-export-CaV6-6gP.js").join("app-excel");
-      var excelCode = (await concat(EXCEL)).split("./index-CyhAqaYv.js").join("app-index");
-      var indexUrl = blobUrl(indexCode);
-      var routesUrl = blobUrl(routesCode);
-      var excelUrl = blobUrl(excelCode);
-      var map = document.createElement("script");
-      map.type = "importmap";
-      map.textContent = JSON.stringify({
-        imports: { "app-index": indexUrl, "app-routes": routesUrl, "app-excel": excelUrl }
-      });
-      document.head.appendChild(map);
-      var boot = document.getElementById("boot");
-      if (boot) boot.remove();
-      var mod = document.createElement("script");
-      mod.type = "module";
-      mod.src = indexUrl;
-      document.body.appendChild(mod);
-    } catch (e) {
-      var s = document.getElementById("status");
-      if (s) s.textContent = "Erreur de chargement: " + e.message;
-      console.error(e);
-    }
-  })();
-  </script>
+  <div id="app"><p style="text-align:center;padding:48px;color:#6b6458">Chargement…</p></div>
+  <script src="./app.js" defer></script>
 </body>
 </html>
