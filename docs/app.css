@@ -33,6 +33,26 @@ h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; }
 .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 16px 0; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
 .card b { display: block; font-family: var(--display); font-size: 22px; margin-top: 4px; }
+.product-grid { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 8px; }
+@media (min-width: 640px) { .product-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1100px) { .product-grid { grid-template-columns: 1fr 1fr 1fr; } }
+.product-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
+.recap-entry { margin: 4px 0 16px; font: inherit; color: inherit; }
+.recap-entry:hover { border-color: var(--primary); }
+.product-card h3 { font-family: "Noto Naskh Arabic", var(--display); font-size: 17px; line-height: 1.35; }
+.product-card .n { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat { border-radius: 10px; padding: 10px 12px; }
+.stat span { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.stat strong { display: block; font-family: var(--display); font-size: 26px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat.in { background: var(--sidebar); border: 1px solid rgb(33 85 68 / .22); }
+.stat.in span { color: var(--primary); }
+.stat.out { background: #f6efe4; border: 1px solid rgb(138 90 32 / .25); }
+.stat.out span { color: #8a5a20; }
+.product-foot { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 13px; }
+.product-foot small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.num-in { color: var(--primary); font-weight: 600; }
+.num-out { color: #8a5a20; font-weight: 600; }
 .tabs { display: flex; gap: 4px; background: #ebe4d6; padding: 4px; border-radius: 10px; margin: 16px 0; }
 .tabs button { flex: 1; height: 42px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-weight: 600; }
 .tabs button.on { background: var(--primary); color: var(--primary-fg); }

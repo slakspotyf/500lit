@@ -1,3 +1,0 @@
-Site statique dans docs/ — pas de build.
-GitHub Pages: Settings → Pages → GitHub Actions
-Cloudflare: output directory = docs, build command empty
